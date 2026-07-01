@@ -23,7 +23,7 @@ Tetris v7 focuses on the core gameplay loop:
 
 ## Tetris in Action
 
-![Tetris preview](./assets/background.png)
+![Tetris preview](./tetris.jpeg)
 
 > You can replace this preview with a gameplay image or GIF later.
 
