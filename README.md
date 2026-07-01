@@ -23,7 +23,7 @@ Tetris v7 focuses on the core gameplay loop:
 
 ## Tetris in Action
 
-![Tetris preview](./tetris.jpeg)
+<img src="./tetris.jpeg" alt="Tetris preview" width="80%">
 
 ---
 
