@@ -1,0 +1,4 @@
+/tetris
+/web/*.wasm
+/.vscode/
+.DS_Store

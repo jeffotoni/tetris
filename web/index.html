@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tetris v7 | Go + Ebiten + Wasm</title>
+  <style>
+    :root {
+      --bg-1: #0e0b1e;
+      --bg-2: #2c1660;
+      --card: rgba(10, 10, 24, 0.76);
+      --line: #f6bb42;
+      --text: #fff6db;
+      --muted: #d9cfa9;
+      --ok: #f6bb42;
+      --err: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 50% 10%, var(--bg-2), var(--bg-1) 55%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .panel {
+      width: min(100%, 1060px);
+      background: var(--card);
+      border: 1px solid rgba(246, 187, 66, 0.4);
+      border-radius: 16px;
+      padding: 18px;
+      backdrop-filter: blur(6px);
+    }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 36px); }
+    p { margin: 8px 0; color: var(--muted); }
+    .status { margin-top: 10px; font-weight: 700; color: var(--ok); }
+    .status.error { color: var(--err); }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 14px;
+      border: 1px solid rgba(246, 187, 66, 0.45);
+      border-radius: 10px;
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.2);
+      image-rendering: pixelated;
+    }
+    code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Tetris v7</h1>
+    <p>Controls: <code>Arrow Left/Right/Down</code>, <code>Space</code>, <code>R</code></p>
+    <p id="status" class="status">Loading WebAssembly...</p>
+  </main>
+
+  <script src="./wasm_exec.js"></script>
+  <script>
+    const statusEl = document.getElementById("status");
+
+    function isValidWasm(bytes) {
+      if (bytes.byteLength < 4) {
+        return false;
+      }
+      const magic = new Uint8Array(bytes.slice(0, 4));
+      return magic[0] === 0x00 && magic[1] === 0x61 && magic[2] === 0x73 && magic[3] === 0x6d;
+    }
+
+    async function instantiateWasm(url, go) {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for ${url}`);
+      }
+
+      try {
+        return await WebAssembly.instantiateStreaming(response.clone(), go.importObject);
+      } catch (_) {
+        const bytes = await response.arrayBuffer();
+        if (!isValidWasm(bytes)) {
+          throw new Error(`Invalid wasm payload at ${url}`);
+        }
+        return await WebAssembly.instantiate(bytes, go.importObject);
+      }
+    }
+
+    async function loadWasm() {
+      if (!("WebAssembly" in window)) {
+        throw new Error("This browser does not support WebAssembly.");
+      }
+      if (typeof Go === "undefined") {
+        throw new Error("wasm_exec.js was not loaded.");
+      }
+
+      const go = new Go();
+      const wasmCandidates = ["tetris.wasm", "/main.wasm"];
+      let lastError = null;
+
+      for (const candidate of wasmCandidates) {
+        try {
+          const result = await instantiateWasm(candidate, go);
+          statusEl.textContent = `Running game (${candidate})...`;
+          go.run(result.instance);
+          return;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      throw new Error(`Could not load wasm. Tried: ${wasmCandidates.join(", ")}. Last error: ${lastError && lastError.message ? lastError.message : "unknown"}`);
+    }
+
+    loadWasm().catch((error) => {
+      console.error(error);
+      statusEl.textContent = "Error loading wasm: " + error.message;
+      statusEl.classList.add("error");
+    });
+  </script>
+</body>
+</html>
